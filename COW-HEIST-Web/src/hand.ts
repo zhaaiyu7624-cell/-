@@ -110,7 +110,7 @@ export class HandController {
     this.lastPalm={x,y};this.seen=now
     if(!this.tracked)this.stableSince=now
     this.tracked=true
-    const a=1-Math.exp(-Math.min(gap,100)/105)
+    const a=1-Math.exp(-Math.min(gap,100)/84)
     this.u+=(clamp(.5+(x-this.center.x)/.56)-this.u)*a
     this.v+=(clamp(.5+(y-this.center.y)/.54)-this.v)*a
     const ratio=distance(points[4],points[8],aspect)/width

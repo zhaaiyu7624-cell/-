@@ -4,7 +4,7 @@ import '@fontsource/space-mono/400.css'
 import './style.css'
 import {Game,type GameState} from './game'
 import {HandController} from './hand'
-import {levels,loadProgress,saveProgress,settings} from './levels'
+import {captureSeconds,levels,loadProgress,rule,saveProgress,settings} from './levels'
 
 const icons:Record<string,string>={
   ufo:'<path d="M6 11c0-4 3-7 6-7s6 3 6 7M2 13c0-1.6 4.5-3 10-3s10 1.4 10 3-4.5 4-10 4S2 14.6 2 13ZM7 19l-1 2m6-2v3m5-3 1 2"/><path d="M9 13h.01m3 1h.01m3-1h.01"/>',
@@ -52,7 +52,7 @@ app.innerHTML=`
   </section>
   <section id="hud" hidden aria-label="游戏 HUD">
     <div class="score chip"><span id="level-name" class="micro">得分</span><strong id="score">000</strong></div>
-    <div class="goal chip"><span class="micro">任务目标 <b id="goal-number"></b></span><div class="meter" id="goal-meter"></div></div>
+    <div class="goal chip"><span class="micro">任务目标 <b id="goal-number"></b></span><div class="meter" id="goal-meter"></div><div id="combo" class="combo" hidden></div></div>
     <div class="time chip"><span class="micro">TIME / 时间</span><strong id="seconds">60<small>s</small></strong></div>
   </section>
   <div id="countdown" hidden aria-live="polite"></div>
@@ -155,7 +155,7 @@ function renderMenu(phase:GameState['phase']){
   if(showingHelp){
     $('card-label').textContent='FLIGHT MANUAL'
     $('card-title').textContent='操作说明'
-    $('card-text').textContent='手势：手掌移动，拇指和食指捏合吸取。鼠标：移动光标，按住左键或空格吸取。黑白牛 1.2 秒 +100，黄牛 2.4 秒 +200。南瓜 −80、稻草人 −100、油桶 −120。P 键暂停。'
+    $('card-text').textContent='手势：手掌移动，拇指和食指捏合吸取。鼠标：移动光标，按住左键或空格吸取。黑白牛 '+captureSeconds('cow')+' 秒 +100，黄牛 '+captureSeconds('gold')+' 秒 +200。光束需跟住牛；橙色环预警障碍。连续捕获 3 / 5 只触发 COMBO x2 / x3。吸到障碍或 6.5 秒未捕获会清零。P 键暂停。'
     makeButton('返回',closeHelp,true)
     if(mode==='hand'&&['calibrating','paused'].includes(phase))makeButton('改用鼠标',mouseMode)
   }else if(phase==='modes'){
@@ -224,12 +224,16 @@ function render(state:GameState){
     $('pause').setAttribute('aria-label',phase==='paused'?'继续':'暂停')
   }
   $('countdown').hidden=phase!=='countdown'
-  const hudKey=[phase,state.level,state.seconds,state.score].join('/')
+  const hudKey=[phase,state.level,state.seconds,state.score,state.combo,state.multiplier].join('/')
   if(lastHud!==hudKey){
     lastHud=hudKey
     if(phase==='countdown')text('countdown',String(state.seconds))
     text('level-name',levels[state.level].name)
     text('goal-number',levels[state.level].goal+' PTS')
+    const badge=$('combo')
+    badge.hidden=state.combo===0
+    badge.classList.toggle('boosted',state.multiplier>1)
+    text('combo',state.multiplier>1?`COMBO x${state.multiplier} · ${state.combo} 连捕`:`连续捕获 ${state.combo}`)
     text('score',String(state.score).padStart(3,'0'))
     $('seconds').firstChild!.textContent=String(phase==='countdown'?settings.seconds:state.seconds).padStart(2,'0')
     $('seconds').classList.toggle('urgent',state.seconds<=10&&phase==='playing')
@@ -293,11 +297,14 @@ try{
       game.input(hasPointer?{x:px,y:py,ground:true}:undefined,mouseDown||spaceDown)
     }
   }
-  game.onCapture=(points,p)=>{
+  game.onCapture=(points,p,kind,bonus)=>{
     playSound(points<0)
     const reached=game.state.score>=game.level.goal&&!goalAnnounced
     if(reached)goalAnnounced=true
-    eventHint=reached?'目标已达成 · 计时继续':points<0?'误吸障碍物 '+points:points===200?'捕获黄牛 +200':'捕获黑白牛 +100'
+    eventHint=reached?'目标已达成 · 计时继续':points<0?`误吸${rule(kind).label} ${points}`:
+      `捕获${rule(kind).label} +${rule(kind).points}${bonus?' · 连击 +'+bonus:''}`
+    if(bonus)$('combo').animate([{transform:'scale(1.2)',filter:'brightness(1.6)'},{transform:'scale(1)',filter:'brightness(1)'}],{duration:360})
+    $('flash').style.background=points<0?'#ff473e':'#8affd0'
     hintUntil=performance.now()+1600
     const floater=document.createElement('div');floater.className=points<0?'points danger':'points';floater.textContent=points<0?String(points):'+'+points
     floater.style.left=p.x+'%';floater.style.top=p.y+'%';$('effects').append(floater)

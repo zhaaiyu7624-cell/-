@@ -153,3 +153,5 @@ h1 em{color:var(--mint);font-style:inherit;text-shadow:0 4px 0 #407d7d,0 11px 34
 .choice:disabled{opacity:.47;cursor:default}
 .card{max-height:calc(100dvh - 115px);overflow:auto}
 .points.danger{color:#ff7469}
+.combo{margin:7px auto -2px;text-align:center;font:700 11px/1.3 var(--mono);letter-spacing:.08em;color:var(--cream)}
+.combo.boosted{color:var(--mint);text-shadow:0 0 12px #83ffdba8}
