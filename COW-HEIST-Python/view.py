@@ -174,10 +174,26 @@ class View:
         self.text('TIME LEFT', 906, 36, 19, MUTED, 'topright')
         self.text(f'{math.ceil(game.remaining):02d}s', 906, 55, 33,
                   AMBER if game.remaining <= 10 else MINT, 'topright', True)
-        self.text('MOUSE  /  MOVE      LEFT CLICK  /  HOLD TO ABDUCT      P  /  PAUSE',
+        self.text('MOUSE  /  MOVE      LEFT CLICK  /  ABDUCT      C  /  CAMERA      P  /  PAUSE',
                   480, 590, 20, CREAM, 'midtop')
         self.text(f'HOLD {CAPTURE_SECONDS:g}s  •  DAIRY +10  •  GOLD +25',
                   480, 613, 18, MUTED, 'midtop')
+
+    def camera_status(self, message, sample, size):
+        pg.draw.rect(self.screen, INK, (22, 570, 916, 64), border_radius=8)
+        self.text(message, 480, 580, 20, MINT, 'midtop', True)
+        self.text('MOVE PALM / PINCH TO ABDUCT     C / SWITCH INPUT     P / PAUSE'
+                  if sample is not None else 'MOUSE / MOVE & HOLD LEFT CLICK     C / RETRY CAMERA',
+                  480, 608, 18, CREAM, 'midtop')
+        if sample is None or not sample.image:
+            return
+        x, y = 772, 109
+        self.screen.blit(pg.image.frombytes(sample.image, size, 'RGB'), (x, y))
+        pg.draw.rect(self.screen, MINT, (x - 1, y - 1, size[0] + 2, size[1] + 2), 1)
+        for u, v in sample.points:
+            if 0 <= u < 1 and 0 <= v < 1:
+                pg.draw.circle(self.screen, MINT, (int(x + u * size[0]), int(y + v * size[1])), 2)
+        self.text('LOCAL CAMERA', x + size[0] / 2, y + size[1] + 5, 15, CREAM, 'midtop')
 
     def overlay(self, game):
         self.light.fill((19, 15, 35, 170))
@@ -186,7 +202,7 @@ class View:
         pg.draw.rect(self.screen, '#6c667f', (239, 158, 482, 352), 1, border_radius=20)
         self.text('PYTHON EDITION   /   MIDNIGHT FARM', 480, 187, 20, MINT, 'midtop')
         if game.phase == 'title':
-            headline, description, button = 'COW HEIST', 'Move the UFO. Hold left click over a cow.', 'START RAID'
+            headline, description, button = 'COW HEIST', 'Move the UFO. Hold left click or pinch.', 'START RAID'
             detail = '60 seconds   /   Reach 100 points'
         elif game.phase == 'paused':
             headline, description, button = 'PAUSED', 'The mission timer is paused.', 'RESUME'

@@ -1,27 +1,26 @@
 @echo off
 cd /d "%~dp0"
-if exist "runtime\python.exe" (
+if exist "runtime\python.exe" if /I not "%~1"=="--camera" (
   "runtime\python.exe" -E -s -B main.py
   if errorlevel 1 goto failed
   exit /b 0
-)
-where py.exe >nul 2>nul
-if errorlevel 1 (
-  echo Install Python 3.12 from https://www.python.org/downloads/windows/
-  echo Keep the Python launcher enabled, then open this file again.
-  pause
-  exit /b 1
 )
 if not exist ".venv\Scripts\python.exe" (
   py -3.12 -m venv .venv
   if errorlevel 1 goto failed
 )
-".venv\Scripts\python.exe" -c "import pygame" >nul 2>nul
+set "DEPS=requirements.txt"
+set "CHECK=import pygame"
+if /I "%~1"=="--camera" (
+  set "DEPS=requirements-camera.txt"
+  set "CHECK=import pygame, cv2, mediapipe"
+)
+".venv\Scripts\python.exe" -c "%CHECK%" >nul 2>nul
 if errorlevel 1 (
-  ".venv\Scripts\python.exe" -m pip install -r requirements.txt
+  ".venv\Scripts\python.exe" -m pip install -r "%DEPS%"
   if errorlevel 1 goto failed
 )
-".venv\Scripts\python.exe" main.py
+".venv\Scripts\python.exe" main.py %*
 if errorlevel 1 goto failed
 exit /b 0
 :failed
