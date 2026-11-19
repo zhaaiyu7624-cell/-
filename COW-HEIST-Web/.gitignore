@@ -1,0 +1,5 @@
+node_modules/
+dist/
+public/vision/wasm/
+public/vision/*.task
+*.local

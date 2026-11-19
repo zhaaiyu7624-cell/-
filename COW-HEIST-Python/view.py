@@ -4,7 +4,8 @@ from random import Random
 
 import pygame as pg
 
-from game import CAPTURE_SECONDS, FIELD, GOAL, REACH
+from game import CAPTURE_SECONDS, FIELD, REACH
+from levels import LEVELS
 
 WIDTH, HEIGHT = 960, 640
 CREAM = '#fff0d9'
@@ -123,6 +124,32 @@ class View:
         animal = pg.transform.smoothscale(animal, (int(65 * size), int(42 * size)))
         self.screen.blit(animal, animal.get_rect(center=(x, y)))
 
+    def draw_hazard(self, target, ship):
+        x, y = target.position.lerp(ship, target.lift)
+        y -= target.lift * 54
+        icon = pg.Surface((58, 63), pg.SRCALPHA)
+        pg.draw.ellipse(icon, '#3a3244', (7, 50, 44, 9))
+        if target.kind == 'pumpkin':
+            for xx in (19, 29, 39):
+                oval(icon, '#db6644', xx, 40, 21, 24)
+            pg.draw.line(icon, '#87a16c', (29, 29), (33, 22), 4)
+        elif target.kind == 'scarecrow':
+            pg.draw.line(icon, '#c89a64', (29, 19), (29, 55), 5)
+            pg.draw.line(icon, '#c89a64', (8, 33), (50, 33), 6)
+            pg.draw.polygon(icon, '#965c71', [(22, 23), (36, 23), (40, 48), (18, 48)])
+            oval(icon, AMBER, 29, 17, 18, 16)
+            pg.draw.line(icon, '#66516d', (16, 13), (42, 13), 5)
+        else:
+            pg.draw.rect(icon, '#677e90', (15, 19, 28, 34), border_radius=4)
+            for yy in (23, 46):
+                pg.draw.line(icon, '#a5aaba', (15, yy), (42, yy), 3)
+        pg.draw.polygon(icon, '#612e45', [(29, 24), (39, 42), (19, 42)])
+        pg.draw.line(icon, '#ff8b67', (29, 29), (29, 35), 2)
+        pg.draw.circle(icon, '#ff8b67', (29, 38), 1)
+        k = 1 - target.lift * .6
+        icon = pg.transform.smoothscale(icon, (int(58 * k), int(63 * k)))
+        self.screen.blit(icon, icon.get_rect(midbottom=(x, y + 20)))
+
     def draw_ship(self, ship, active, when):
         x, y = ship
         y -= 56 + 4 * math.sin(when * 3)
@@ -150,7 +177,10 @@ class View:
         self.screen.blit(self.background, (0, 0))
         when = pg.time.get_ticks() / 1000
         for cow in sorted(game.cows, key=lambda animal: animal.position.y):
-            self.draw_cow(cow, game.ship)
+            if cow.points < 0:
+                self.draw_hazard(cow, game.ship)
+            else:
+                self.draw_cow(cow, game.ship)
         self.draw_ship(game.ship, game.pressed, when)
         if game.lock:
             x, y = game.lock.position
@@ -158,25 +188,28 @@ class View:
             pg.draw.ellipse(self.screen, '#69a79e', rect, 1)
             pg.draw.arc(self.screen, MINT, rect, 0, math.tau * game.lock.lift, 4)
         for pos, points, age in game.popups:
-            self.text(f'+{points}', pos.x, pos.y - 65 - 24 * age, 34, AMBER, 'center', True)
+            self.text(f'{points:+}', pos.x, pos.y - 65 - 24 * age, 34,
+                      AMBER if points > 0 else '#ff7562', 'center', True)
         self.hud(game)
-        if game.phase != 'playing':
+        if game.phase == 'countdown':
+            self.text(math.ceil(game.countdown),480,325,110,MINT,'center',True)
+        elif game.phase != 'playing':
             self.overlay(game)
 
     def hud(self, game):
         pg.draw.rect(self.screen, INK, (28, 24, 904, 67), border_radius=10)
         self.text('SCORE', 51, 36, 19, MUTED)
         self.text(f'{game.score:03d}', 49, 55, 33, MINT, bold=True)
-        self.text('MIDNIGHT FARM RAID', 480, 38, 21, CREAM, 'midtop', True)
+        self.text(game.level['english'].upper(), 480, 38, 21, CREAM, 'midtop', True)
         pg.draw.rect(self.screen, '#534864', (375, 61, 210, 6), border_radius=3)
-        pg.draw.rect(self.screen, MINT, (375, 61, max(0, min(game.score / GOAL, 1) * 210), 6), border_radius=3)
-        self.text(f'GOAL {GOAL}', 480, 72, 17, MUTED, 'midtop')
+        pg.draw.rect(self.screen, MINT, (375, 61, max(0, min(game.score / game.level['goal'], 1) * 210), 6), border_radius=3)
+        self.text(f"GOAL {game.level['goal']}", 480, 72, 17, MUTED, 'midtop')
         self.text('TIME LEFT', 906, 36, 19, MUTED, 'topright')
         self.text(f'{math.ceil(game.remaining):02d}s', 906, 55, 33,
                   AMBER if game.remaining <= 10 else MINT, 'topright', True)
         self.text('MOUSE  /  MOVE      LEFT CLICK  /  ABDUCT      C  /  CAMERA      P  /  PAUSE',
                   480, 590, 20, CREAM, 'midtop')
-        self.text(f'HOLD {CAPTURE_SECONDS:g}s  •  DAIRY +10  •  GOLD +25',
+        self.text(f'DAIRY {CAPTURE_SECONDS:g}s +100  •  GOLD {2*CAPTURE_SECONDS:g}s +200  •  AVOID !',
                   480, 613, 18, MUTED, 'midtop')
 
     def camera_status(self, message, sample, size):
@@ -201,17 +234,28 @@ class View:
         pg.draw.rect(self.screen, '#29243f', (239, 158, 482, 352), border_radius=20)
         pg.draw.rect(self.screen, '#6c667f', (239, 158, 482, 352), 1, border_radius=20)
         self.text('PYTHON EDITION   /   MIDNIGHT FARM', 480, 187, 20, MINT, 'midtop')
+        if game.phase == 'levels':
+            self.text('CHOOSE A MISSION', 480, 228, 37, CREAM, 'midtop', True)
+            for i, rect in enumerate(game.level_buttons()):
+                locked = i > game.unlocked
+                pg.draw.rect(self.screen, '#383247' if locked else '#496366', rect, border_radius=8)
+                self.text(f"{i+1}. {LEVELS[i]['english']}", rect.x+10, rect.y+10, 20, MUTED if locked else CREAM)
+                details = 'LOCKED' if locked else f"Goal {LEVELS[i]['goal']}  /  Best {game.best[i]}"
+                self.text(details, rect.x+10, rect.y+34, 17, MUTED)
+            self.text('M / MAIN MENU    C / CAMERA', 480, 471, 18, MINT, 'midtop')
+            return
         if game.phase == 'title':
             headline, description, button = 'COW HEIST', 'Move the UFO. Hold left click or pinch.', 'START RAID'
-            detail = '60 seconds   /   Reach 100 points'
+            detail = f'Four missions  /  Highest score {max(game.best)}'
         elif game.phase == 'paused':
             headline, description, button = 'PAUSED', 'The mission timer is paused.', 'RESUME'
-            detail = 'Move back over the field when ready'
+            detail = 'R / Restart     M / Main menu'
         else:
-            success = game.score >= GOAL
+            success = game.score >= game.level['goal']
             headline = 'MISSION CLEAR' if success else 'TARGET MISSED'
-            description = f'{game.score} points  /  {game.captures} cows abducted'
-            button, detail = 'PLAY AGAIN', 'Reach 100 points before the clock runs out.'
+            description = f"{game.score}/{game.level['goal']} points  /  {game.captures} cows  /  {game.mistakes} hazards"
+            button = 'NEXT MISSION' if success and game.level_index < len(LEVELS)-1 else 'PLAY AGAIN'
+            detail = 'R / Retry      M / Mission selection'
         self.text(headline, 480, 241, 64 if game.phase == 'title' else 54, CREAM, 'midtop', True)
         self.text(description, 480, 339, 24, MUTED, 'midtop')
         self.text(detail, 480, 369, 21, CREAM, 'midtop')

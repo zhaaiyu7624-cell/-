@@ -7,9 +7,11 @@ import pygame as pg
 from camera import Gestures, Webcam
 from game import FIELD, Game
 from view import HEIGHT, WIDTH, View
+from sounds import RATE, make_sound
 
 
 def main():
+    pg.mixer.pre_init(RATE, -16, 1)
     pg.init()
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     pg.display.set_caption('COW HEIST / Python Edition')
@@ -19,6 +21,8 @@ def main():
     camera, gestures = Webcam(), Gestures()
     use_camera = False
     message = 'MOUSE MODE'
+    success_sound, hazard_sound = make_sound(480, 1020), make_sound(235, 102)
+    muted = False
 
     def enable_camera():
         gestures.reset()
@@ -30,9 +34,13 @@ def main():
     try:
         while True:
             seconds = clock.tick(60) / 1000
+            previous_phase = game.phase
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     return
+                if event.type == pg.KEYDOWN and event.key == pg.K_s:
+                    muted = not muted
+                    continue
                 if event.type == pg.KEYDOWN and event.key == pg.K_c:
                     if use_camera:
                         use_camera = False
@@ -46,6 +54,10 @@ def main():
                 if not (use_camera and mouse_input and game.phase == 'playing'):
                     game.handle(event)
 
+            if use_camera and game.phase == 'title' and previous_phase != 'title':
+                camera.stop()
+                use_camera = False
+                message = 'MOUSE MODE'
             if use_camera and camera.error:
                 use_camera = False
                 game.pressed = False
@@ -62,7 +74,12 @@ def main():
                 else:
                     game.pressed = False
 
+            serial = game.capture_serial
             game.update(seconds)
+            if not muted and game.capture_serial != serial:
+                sound = success_sound if game.last_points > 0 else hazard_sound
+                if sound:
+                    sound.play()
             view.draw(game)
             if use_camera or message != 'MOUSE MODE':
                 view.camera_status(message, camera.sample if use_camera else None, camera.preview_size)
