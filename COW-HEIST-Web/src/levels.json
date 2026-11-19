@@ -36,16 +36,12 @@
       "goal": 1000,
       "cow": 4,
       "gold": 1,
-      "hazards": 1,
+      "hazards": 2,
       "interval": 12,
-      "speed": 1,
       "kinds": [
         "pumpkin"
       ],
-      "turnSeconds": 2.45,
-      "movingHazards": 0,
-      "lockSpeed": 0.35,
-      "tractionSpeed": 0.1
+      "movingHazards": 0
     },
     {
       "name": "午夜追踪",
@@ -54,16 +50,12 @@
       "cow": 5,
       "gold": 1,
       "hazards": 3,
-      "interval": 8,
-      "speed": 1.35,
+      "interval": 9,
       "kinds": [
         "pumpkin",
         "scarecrow"
       ],
-      "turnSeconds": 1.85,
-      "movingHazards": 1,
-      "lockSpeed": 0.4,
-      "tractionSpeed": 0.15
+      "movingHazards": 1
     },
     {
       "name": "幽灵牧场",
@@ -72,17 +64,13 @@
       "cow": 6,
       "gold": 2,
       "hazards": 4,
-      "interval": 6,
-      "speed": 1.65,
+      "interval": 7,
       "kinds": [
         "scarecrow",
         "barrel",
         "pumpkin"
       ],
-      "turnSeconds": 1.35,
-      "movingHazards": 2,
-      "lockSpeed": 0.45,
-      "tractionSpeed": 0.2
+      "movingHazards": 2
     },
     {
       "name": "星际围捕",
@@ -91,17 +79,13 @@
       "cow": 7,
       "gold": 2,
       "hazards": 5,
-      "interval": 4.5,
-      "speed": 1.9,
+      "interval": 5,
       "kinds": [
         "barrel",
         "pumpkin",
         "scarecrow"
       ],
-      "turnSeconds": 1.05,
-      "movingHazards": 3,
-      "lockSpeed": 0.5,
-      "tractionSpeed": 0.25
+      "movingHazards": 3
     }
   ],
   "beam": {
@@ -109,28 +93,29 @@
     "holdRadius": 1.43,
     "graceSeconds": 0.32,
     "decayRate": 0.84,
-    "cowRadiusScale": 1.18,
-    "cowGraceSeconds": 0.6,
-    "cowDecayFraction": 0.3,
-    "tractionThreshold": 0.35,
     "aimDeadZone": 0.055,
     "aimFollowRate": 8,
-    "aimMaxExtraRate": 5
+    "aimMaxExtraRate": 5,
+    "cowAcquireRadius": 1.68,
+    "cowHoldRadius": 1.95,
+    "cowPullStart": 0.7
   },
   "motion": {
-    "minSpeed": 0.38,
-    "maxSpeed": 0.82,
-    "turnRate": 3.2,
-    "turnJitter": 1.25,
+    "minSpeed": 0.29,
+    "maxSpeed": 0.55,
+    "turnRate": 1.1,
+    "turnJitter": 0.58,
     "separation": 1.42,
-    "hazardSpeed": 0.27,
-    "lockedTurnRate": 1.85
+    "turnSeconds": 3.4,
+    "hazardMinSpeed": 0.16,
+    "hazardMaxSpeed": 0.24
   },
   "hazard": {
     "warningSeconds": 1.1,
     "safeDistance": 2.65,
-    "nearCowMin": 1.65,
-    "nearCowMax": 3.3
+    "nearCowMin": 2.05,
+    "nearCowMax": 3.6,
+    "spacing": 2.5
   },
   "combo": {
     "expireSeconds": 6.5,

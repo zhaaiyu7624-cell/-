@@ -190,7 +190,7 @@ function renderMenu(phase:GameState['phase']){
   if(showingHelp){
     $('card-label').textContent='FLIGHT MANUAL'
     $('card-title').textContent='操作说明'
-    $('card-text').textContent='手势：手掌移动，拇指和食指捏合吸取。鼠标：移动光标，按住左键或空格吸取。黑白牛 '+captureSeconds('cow')+' 秒 +100，黄牛 '+captureSeconds('gold')+' 秒 +200。光束需跟住牛；橙色环预警障碍。连续捕获 3 / 5 只触发 COMBO x2 / x3。吸到障碍或 6.5 秒未捕获会清零。P 键暂停。'
+    $('card-text').textContent='手势：手掌移动，拇指和食指捏合吸取。鼠标：移动光标，按住左键或空格吸取。黑白牛 '+captureSeconds('cow')+' 秒 +100，黄牛 '+captureSeconds('gold')+' 秒 +200。锁定后奶牛保持稳定，移开光束会暂停吸取，重新瞄准原落点即可继续。橙色环预警障碍。连续捕获 3 / 5 只触发 COMBO x2 / x3。吸到障碍或 6.5 秒未捕获会清零。P 键暂停。'
     makeButton('返回',closeHelp,true)
     if(mode==='hand'&&['calibrating','paused'].includes(phase))makeButton('改用鼠标',mouseMode)
   }else if(phase==='modes'){
