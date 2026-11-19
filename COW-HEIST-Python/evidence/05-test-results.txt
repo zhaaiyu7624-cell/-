@@ -1,0 +1,12 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.14)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+Early release cancelled capture and progress decayed
+capture 1, +25, 10 cows in field
+capture 2, +25, 10 cows in field
+capture 3, +10, 10 cows in field
+capture 4, +10, 10 cows in field
+capture 5, +25, 10 cows in field
+capture 6, +10, 10 cows in field
+Actual main loop: 60.23s, 105 points, 6 cows, success
+Replay state reset successfully
+Accelerated failure path: 0 points and timeout.
