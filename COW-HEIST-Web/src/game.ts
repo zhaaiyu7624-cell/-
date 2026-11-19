@@ -6,7 +6,7 @@ import {captureSeconds,isHazard,levels,rule,settings,type TargetKind} from './le
 export type Phase='title'|'modes'|'levels'|'calibrating'|'countdown'|'playing'|'paused'|'ended'
 export interface GameState { phase:Phase; score:number; count:number; hazards:number; level:number; seconds:number; progress:number; combo:number; multiplier:number }
 interface Cow {
-  model:T.Group; shadow:T.Mesh; kind:TargetKind; ground:T.Vector2
+  model:T.Group; shadow:T.Mesh; kind:TargetKind; ground:T.Vector2; anchor:T.Vector2
   heading:number; course:number; wander:number; speed:number; pace:number; lift:number
   lastHit:number; warningUntil:number; mobile:boolean; marker:T.Mesh<T.TorusGeometry,T.MeshBasicMaterial>|undefined
 }
@@ -37,7 +37,7 @@ class Beam {
   private opacity=0
   constructor(scene:T.Scene){
     scene.add(this.group,this.lock)
-    this.outer=new T.Mesh(new T.CylinderGeometry(.43,balance.holdRadius,1,40,1,true),new T.ShaderMaterial({
+    this.outer=new T.Mesh(new T.CylinderGeometry(.43,balance.holdRadius*balance.cowRadiusScale,1,40,1,true),new T.ShaderMaterial({
       transparent:true,depthWrite:false,side:T.DoubleSide,blending:T.AdditiveBlending,
       uniforms:{alpha:{value:0},time:{value:0}},
       vertexShader:'varying vec2 tex; void main(){tex=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
@@ -68,13 +68,13 @@ class Beam {
     this.outer.material.uniforms.alpha.value=a;this.outer.material.uniforms.time.value=t
     this.bloom.material.opacity=a*.86
     for(let i=0;i<this.waves.length;i++){
-      const u=(t*.38+i*.25)%1,w=this.waves[i],r=balance.holdRadius-u*(balance.holdRadius-.44)
+      const u=(t*.38+i*.25)%1,w=this.waves[i],r=balance.holdRadius*balance.cowRadiusScale*(1-u)+.44*u
       w.position.y=.10+u*(height-.1);w.scale.set(r,r,1);w.material.opacity=a*(.20+.44*Math.sin(u*Math.PI))
     }
     const pos=this.dust.geometry.attributes.position
     for(let i=0;i<pos.count;i++){
       const j=i*4,p=(this.scatter[j]+t*(.22+this.scatter[j+1]*.18))%1
-      const r=(balance.holdRadius-p*(balance.holdRadius-.44))*Math.sqrt(this.scatter[j+2]), angle=this.scatter[j+3]*Math.PI*2+t*.36
+      const r=(balance.holdRadius*balance.cowRadiusScale*(1-p)+.44*p)*Math.sqrt(this.scatter[j+2]), angle=this.scatter[j+3]*Math.PI*2+t*.36
       pos.setXYZ(i,Math.cos(angle)*r,p*height,Math.sin(angle)*r)
     }
     pos.needsUpdate=true;this.dust.material.opacity=a*.76
@@ -111,6 +111,7 @@ export class Game {
   private beforePause:Phase='playing'
   private firing=false
   private locked:Cow|undefined
+  private recoverable:Cow|undefined
   private readonly sparks:T.Points<T.BufferGeometry,T.PointsMaterial>
   private readonly burstOrigin=new T.Vector3()
   private burstAt=-2
@@ -164,7 +165,7 @@ export class Game {
   }
   private resetCows(){
     for(const c of this.cows)this.removeCow(c)
-    this.cows.length=0;this.respawns.length=0
+    this.cows.length=0;this.respawns.length=0;this.recoverable=undefined
     const planned:TargetKind[]=this.state.phase==='title'
       ? cowSpawns.slice(0,11).map((_,i)=>i===7?'gold':'cow')
       : [...Array<TargetKind>(this.level.cow).fill('cow'),...Array<TargetKind>(this.level.gold).fill('gold')]
@@ -185,7 +186,7 @@ export class Game {
     }
     const speed=motion.minSpeed+this.rng()*(motion.maxSpeed-motion.minSpeed)
     this.cows.push({
-      model,shadow,kind,ground:new T.Vector2(x,z),heading,course:heading,
+      model,shadow,kind,ground:new T.Vector2(x,z),anchor:new T.Vector2(x,z),heading,course:heading,
       wander:this.level.turnSeconds*(.55+this.rng()),speed,pace:speed,lift:0,lastHit:-Infinity,
       warningUntil:warning?this.roundTime+hazard.warningSeconds:0,marker,
       mobile:warning&&(this.hazardSequence%this.level.hazards)<this.level.movingHazards
@@ -252,18 +253,33 @@ export class Game {
   }
   private drive(c:Cow,hit:boolean,dt:number){
     if(isHazard(c.kind)&&!c.mobile)return
+    const fits=(x:number,z:number)=>safeGround(x,z)&&this.cows.every(other=>other===c
+      || Math.hypot(x-other.ground.x,z-other.ground.y)>=motion.separation)
+    const normal=c.speed*this.level.speed
+    if(hit&&!isHazard(c.kind)){
+      // The lock has priority over wandering. Ease body orientation separately
+      // so the aiming anchor never jumps with the struggle animation.
+      const ship=this.ship.position
+      const distance=this.distance(c)
+      const fraction=c.lift>=balance.tractionThreshold?this.level.tractionSpeed:this.level.lockSpeed
+      c.pace=normal*fraction
+      if(distance>0){
+        const heading=Math.atan2(c.ground.y-ship.z,ship.x-c.ground.x)
+        c.heading=turn(c.heading,heading,dt*motion.lockedTurnRate)
+        const step=Math.min(c.pace*dt,distance)
+        const x=c.ground.x+(ship.x-c.ground.x)*step/distance
+        const z=c.ground.y+(ship.z-c.ground.y)*step/distance
+        if(fits(x,z))c.ground.set(x,z)
+      }
+      return
+    }
     c.wander-=dt
     if(c.wander<=0){
       c.course=c.heading+(this.rng()*2-1)*motion.turnJitter
       c.wander=this.level.turnSeconds*(.65+this.rng()*.7)
     }
-    // Steer away from the beam while locked. The turn remains continuous.
-    const away=Math.atan2(this.ship.position.z-c.ground.y,c.ground.x-this.ship.position.x)
-    const desired=hit&&!isHazard(c.kind)&&this.distance(c)>.16?away:c.course
-    const speed=c.speed*this.level.speed*(isHazard(c.kind)?motion.hazardSpeed:hit?this.level.escape:1)
+    const speed=normal*(isHazard(c.kind)?motion.hazardSpeed:1)
     c.pace=T.MathUtils.lerp(c.pace,speed,1-Math.exp(-dt*4))
-    const fits=(x:number,z:number)=>safeGround(x,z)&&this.cows.every(other=>other===c
-      || Math.hypot(x-other.ground.x,z-other.ground.y)>=motion.separation)
     if(!fits(c.ground.x+Math.cos(c.heading)*.42,c.ground.y-Math.sin(c.heading)*.42)){
       const chosen=[.75,-.75,1.5,-1.5,2.35,-2.35,Math.PI].map(a=>c.heading+a).find(a=>fits(
         c.ground.x+Math.cos(a)*.72,c.ground.y-Math.sin(a)*.72))
@@ -272,11 +288,24 @@ export class Game {
         c.heading=turn(c.heading,chosen,dt*motion.turnRate)
       }
     }else{
-      c.heading=turn(c.heading,desired,dt*motion.turnRate)
+      c.heading=turn(c.heading,c.course,dt*motion.turnRate)
     }
     const x=c.ground.x+Math.cos(c.heading)*c.pace*dt
     const z=c.ground.y-Math.sin(c.heading)*c.pace*dt
     if(fits(x,z))c.ground.set(x,z)
+  }
+  private radius(c:Cow,sustained:boolean){
+    const base=sustained?balance.holdRadius:balance.acquireRadius
+    return base*(isHazard(c.kind)?1:balance.cowRadiusScale)
+  }
+  private findLock(){
+    const previous=this.recoverable
+    if(previous&&this.roundTime-previous.lastHit<=balance.cowGraceSeconds
+      &&this.distance(previous)<=this.radius(previous,true))return previous
+    return this.cows.reduce<Cow|undefined>((closest,c)=>{
+      const distance=this.distance(c)
+      return !c.marker&&distance<=this.radius(c,false)&&(!closest||distance<this.distance(closest))?c:closest
+    },undefined)
   }
   private distance(c:Cow){
     return Math.hypot(c.ground.x-this.ship.position.x,c.ground.y-this.ship.position.z)
@@ -317,6 +346,7 @@ export class Game {
     if(index<0 || c.lift<1)return
     // Retire the completed target before notifying the UI or queuing a replacement.
     this.cows.splice(index,1)
+    if(this.recoverable===c)this.recoverable=undefined
     this.locked=undefined
     const base=rule(c.kind).points
     let bonus=0
@@ -384,35 +414,42 @@ export class Game {
       this.mill.rotation.z+=dt*.25
       if(preview) this.target.set(3.75+Math.sin(time*.54)*.37,flight,1.35+Math.cos(time*.51)*.28)
       const ox=this.ship.position.x,oz=this.ship.position.z
-      this.ship.position.lerp(this.target,1-Math.exp(-dt*9))
+      const gap=Math.hypot(this.target.x-ox,this.target.z-oz)
+      const rate=balance.aimFollowRate+Math.min(balance.aimMaxExtraRate,gap*1.8)
+      const follow=gap>balance.aimDeadZone?(1-Math.exp(-dt*rate))*(1-balance.aimDeadZone/gap):0
+      this.ship.position.lerp(this.target,follow)
       this.ship.position.y=flight+Math.sin(time*2.05)*.13
       this.hull.rotation.z=T.MathUtils.lerp(this.hull.rotation.z,clamp((ox-this.ship.position.x)*.65,-.16,.16),.17)
       this.hull.rotation.x=T.MathUtils.lerp(this.hull.rotation.x,clamp((this.ship.position.z-oz)*.52,-.14,.14),.17)
       this.shipShadow.position.set(this.ship.position.x,.054,this.ship.position.z)
-      if(!live||!active||!this.locked||this.distance(this.locked)>balance.holdRadius){
-        this.locked=live&&active?this.cows.reduce<Cow|undefined>((closest,c)=>{
-          const distance=this.distance(c)
-          return !c.marker&&distance<=balance.acquireRadius&&(!closest||distance<this.distance(closest))?c:closest
-        },undefined):undefined
-      }
+      if(!live||!active||!this.locked||this.distance(this.locked)>this.radius(this.locked,true))
+        this.locked=live&&active?this.findLock():undefined
       for(const [i,c] of this.cows.entries()){
         if(c.marker)continue
         const showcase=preview&&i===4
         if(!showcase)this.drive(c,c===this.locked,dt)
         // Check range again after movement. Grace freezes progress, never adds it.
-        if(c===this.locked&&this.distance(c)>balance.holdRadius)this.locked=undefined
+        if(c===this.locked&&this.distance(c)>this.radius(c,true))this.locked=undefined
+        const danger=isHazard(c.kind)
         if(c===this.locked){
           c.lastHit=this.roundTime
+          c.anchor.set(this.ship.position.x,this.ship.position.z)
           c.lift=Math.min(1,c.lift+dt/captureSeconds(c.kind))
-        }else if(live&&this.roundTime-c.lastHit>balance.graceSeconds){
-          c.lift=Math.max(0,c.lift-dt*balance.decayRate)
+          if(!danger)this.recoverable=c
+        }else if(live&&c.lift>0){
+          const grace=danger?balance.graceSeconds:balance.cowGraceSeconds
+          const decay=danger?balance.decayRate:balance.cowDecayFraction/captureSeconds(c.kind)
+          const decayTime=clamp(this.roundTime-c.lastHit-grace,0,dt)
+          c.lift=Math.max(0,c.lift-decayTime*decay)
         }
         if(showcase)c.lift=.46+Math.sin(time*1.2)*.07
-        const pull=showcase?.92:clamp((c.lift-.72)/.28,0,1)*.87
+        const traction=clamp((c.lift-balance.tractionThreshold)/(1-balance.tractionThreshold),0,1)
+        const height=showcase||danger?c.lift:traction*traction*(3-2*traction)
+        const pull=showcase?.92:danger?clamp((c.lift-.72)/.28,0,1)*.87:height*.87
         c.model.position.set(
-          T.MathUtils.lerp(c.ground.x,this.ship.position.x,pull),
-          c.lift*(this.ship.position.y-.57),
-          T.MathUtils.lerp(c.ground.y,this.ship.position.z,pull))
+          T.MathUtils.lerp(c.ground.x,showcase?this.ship.position.x:c.anchor.x,pull),
+          height*(this.ship.position.y-.57),
+          T.MathUtils.lerp(c.ground.y,showcase?this.ship.position.z:c.anchor.y,pull))
         c.model.rotation.y=turn(c.model.rotation.y,c.heading+c.lift*.45,dt*5)
         c.model.rotation.z=c.lift*.34+Math.sin(time*4+i)*c.lift*.13
         c.model.scale.setScalar(1-c.lift*(showcase?.34:.70))

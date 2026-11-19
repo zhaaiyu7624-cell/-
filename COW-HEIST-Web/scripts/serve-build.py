@@ -42,7 +42,7 @@ def main():
         server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
     with server:
         url = f'http://127.0.0.1:{server.server_port}/'
-        print(f'COW HEIST 2.2: {url}\nKeep this window open while playing.', flush=True)
+        print(f'COW HEIST 2.3: {url}\nKeep this window open while playing.', flush=True)
         if not args.no_browser:
             webbrowser.open(url)
         try:

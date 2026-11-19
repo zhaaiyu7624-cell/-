@@ -20,6 +20,7 @@ export class HandController {
   private seen=0
   private videoTime=-1
   private pinchSince=0
+  private pinchRatio:number|undefined
   private pinchCandidate=false
   private center={x:.5,y:.5}
   private lastPalm={x:.5,y:.5}
@@ -86,10 +87,11 @@ export class HandController {
   }
   private lose(){
     this.tracked=false;this.pinched=false;this.pinchCandidate=false;this.pinchSince=0;this.stableSince=0
+    this.pinchRatio=undefined
     this.ctx?.clearRect(0,0,this.overlay.width,this.overlay.height)
   }
   tick(now:number){
-    if(!this.model||this.video.readyState<2)return
+    if(!this.model||this.video.readyState<2){if(this.tracked)this.lose();return}
     if(now-this.inference<42||this.video.currentTime===this.videoTime){
       if(this.seen&&now-this.seen>180)this.lose()
       return
@@ -110,13 +112,18 @@ export class HandController {
     this.lastPalm={x,y};this.seen=now
     if(!this.tracked)this.stableSince=now
     this.tracked=true
-    const a=1-Math.exp(-Math.min(gap,100)/84)
-    this.u+=(clamp(.5+(x-this.center.x)/.56)-this.u)*a
-    this.v+=(clamp(.5+(y-this.center.y)/.54)-this.v)*a
+    const u=clamp(.5+(x-this.center.x)/.56),v=clamp(.5+(y-this.center.y)/.54)
+    // Damp small tracking jitter without adding the same lag to large moves.
+    const movement=Math.hypot(u-this.u,v-this.v)
+    const response=130-65*clamp(movement/.20)
+    const a=1-Math.exp(-Math.min(gap,100)/response)
+    this.u+=(u-this.u)*a
+    this.v+=(v-this.v)*a
     const ratio=distance(points[4],points[8],aspect)/width
-    const candidate=ratio<(this.pinched?.37:.25)
+    this.pinchRatio=this.pinchRatio===undefined?ratio:this.pinchRatio+.58*(ratio-this.pinchRatio)
+    const candidate=this.pinchRatio<(this.pinched?.39:.26)
     if(candidate!==this.pinchCandidate){this.pinchCandidate=candidate;this.pinchSince=now}
-    if(candidate!==this.pinched&&now-this.pinchSince>=125)this.pinched=candidate
+    if(candidate!==this.pinched&&now-this.pinchSince>=(candidate?100:145))this.pinched=candidate
     this.draw(points)
   }
   private draw(points:NormalizedLandmark[]){
