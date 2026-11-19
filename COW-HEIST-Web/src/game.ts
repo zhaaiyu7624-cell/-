@@ -120,6 +120,7 @@ export class Game {
   private roundTime=0
   private lastCowAt=-Infinity
   get level(){return levels[this.state.level]}
+  get beamActive(){return this.firing&&this.state.phase==='playing'}
   onFrame:(now:number)=>void=()=>{}
   onUpdate:(s:GameState)=>void=()=>{}
   onCapture:(points:number,location:{x:number,y:number},kind:TargetKind,bonus:number)=>void=()=>{}

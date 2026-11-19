@@ -1,4 +1,4 @@
-# COW HEIST 2.1 / 星际偷牛计划（网页 3D 版）
+# COW HEIST 2.2 / 星际偷牛计划（网页 3D 版）
 
 ## Windows 直接试玩
 
@@ -42,3 +42,9 @@ Vite 默认地址为 `http://localhost:5173/`。执行 `npm run build` 构建，
 - `src/hand.ts` 本地手势识别、标定和摄像头生命周期。
 - `src/world.ts` 与 `src/models.ts` 夜间农场和程序化场景模型。
 - `scripts/serve-build.py` 生产网页本地启动。课程要求的 Python 游戏实现位于单独的 `COW-HEIST-Python` 提交包中。
+
+## 2.2 原创音频
+
+首次点击页面或按键后解锁声音。右上角扬声器按钮展开总音量、背景音乐、游戏音效与静音设置，设置按当前浏览器地址保留。所有音频从本地 WAV 加载，不需要网络音源。Windows ZIP 的 Python 启动脚本直接播放随包附带的 WAV。部署到静态站点前执行 `npm run build`，将 WAV 一并写入 `dist/audio/`。
+
+[合成方法、重新生成命令与完整文件清单](AUDIO.md)

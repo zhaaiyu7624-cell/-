@@ -8,12 +8,22 @@ from pathlib import Path
 
 
 class StaticFiles(SimpleHTTPRequestHandler):
+    def translate_path(self, request_path):
+        path = Path(super().translate_path(request_path))
+        root = Path(self.directory)
+        relative = path.relative_to(root)
+        if relative.parts[:1] == ('audio',) and not (root / 'audio').is_dir():
+            # The launch ZIP ships one WAV copy, shared by source and preview.
+            return os.fspath(root.parent / 'public' / relative)
+        return os.fspath(path)
+
     extensions_map = {
         **SimpleHTTPRequestHandler.extensions_map,
         '.js': 'text/javascript',
         '.mjs': 'text/javascript',
         '.css': 'text/css',
         '.wasm': 'application/wasm',
+        '.wav': 'audio/wav',
     }
 
 
@@ -32,7 +42,7 @@ def main():
         server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
     with server:
         url = f'http://127.0.0.1:{server.server_port}/'
-        print(f'COW HEIST 2.1: {url}\nKeep this window open while playing.', flush=True)
+        print(f'COW HEIST 2.2: {url}\nKeep this window open while playing.', flush=True)
         if not args.no_browser:
             webbrowser.open(url)
         try:

@@ -3,6 +3,7 @@ import '@fontsource/barlow-condensed/800-italic.css'
 import '@fontsource/space-mono/400.css'
 import './style.css'
 import {Game,type GameState} from './game'
+import {AudioManager} from './audio'
 import {HandController} from './hand'
 import {captureSeconds,levels,loadProgress,rule,saveProgress,settings} from './levels'
 
@@ -30,11 +31,20 @@ app.innerHTML=`
   <header class="topbar">
     <div class="brand" aria-label="Cow Heist">${icon('ufo')}<span>COW<span class="brand-accent">/</span>HEIST</span></div>
     <div class="toolbar">
-      <button id="sound" class="icon-button" aria-label="静音" title="静音">${icon('sound')}</button>
+      <button id="sound" class="icon-button" aria-label="声音设置" title="声音设置" aria-expanded="false" aria-controls="audio-panel">${icon('sound')}</button>
       <button id="help" class="icon-button" aria-label="操作说明" title="操作说明">${icon('help')}</button>
       <button id="pause" class="icon-button" hidden aria-label="暂停" title="暂停 (P)">${icon('pause')}</button>
     </div>
   </header>
+  <aside id="audio-panel" class="audio-panel" aria-label="声音设置" hidden>
+    <div class="audio-controls-heading"><strong>声音设置</strong><button id="audio-mute" class="subtle" type="button" aria-pressed="false">静音</button></div>
+    <label for="volume-master">总音量 <output id="value-master"></output></label>
+    <input id="volume-master" type="range" min="0" max="100">
+    <label for="volume-bgm">背景音乐 <output id="value-bgm"></output></label>
+    <input id="volume-bgm" type="range" min="0" max="100">
+    <label for="volume-sfx">游戏音效 <output id="value-sfx"></output></label>
+    <input id="volume-sfx" type="range" min="0" max="100">
+  </aside>
   <section class="hero" id="hero" aria-labelledby="title">
     <div class="eyebrow"><i></i> MIDNIGHT FARM RAID</div>
     <h1 id="title">COW<br><em>HEIST</em></h1>
@@ -84,27 +94,52 @@ let hintUntil=0
 let eventHint=''
 let goalAnnounced=false
 let mode:'hand'|'mouse'='mouse'
-let muted=false, mouseDown=false, spaceDown=false, hasPointer=false
+const audio=new AudioManager()
+let mouseDown=false, spaceDown=false, hasPointer=false
 let px=.5,py=.57
 let error=''
 let calibrationStarted=0
 let showingHelp=false
 let helpPaused=false
-let audio:AudioContext|undefined
-
-function playSound(danger=false){
-  if(muted||!audio)return
-  const t=audio.currentTime
-  for(const [f,offset] of (danger?[[210,0],[113,.09]]:[[490,0],[880,.07],[1190,.122]])){
-    const o=audio.createOscillator(),gain=audio.createGain()
-    o.type=danger?'triangle':'sine';o.frequency.setValueAtTime(f,t+offset);o.frequency.exponentialRampToValueAtTime(f*.75,t+offset+.14)
-    gain.gain.setValueAtTime(.001,t+offset);gain.gain.exponentialRampToValueAtTime(.13,t+offset+.02);gain.gain.exponentialRampToValueAtTime(.001,t+offset+.20)
-    o.connect(gain).connect(audio.destination);o.start(t+offset);o.stop(t+offset+.21)
+function unlockAudio(){audio.unlock()}
+const volumeKeys=['master','bgm','sfx'] as const
+function showAudioSettings(){
+  const muted=audio.settings.muted
+  $('sound').innerHTML=icon(muted?'mute':'sound')
+  $('audio-mute').textContent=muted?'取消静音':'静音'
+  $('audio-mute').setAttribute('aria-pressed',String(muted))
+  for(const channel of volumeKeys){
+    const percent=Math.round(audio.settings[channel]*100)
+    $<HTMLInputElement>('volume-'+channel).value=String(percent)
+    $('value-'+channel).textContent=percent+'%'
   }
 }
-function unlockAudio(){
-  try{audio??=new AudioContext();void audio.resume().catch(()=>{})}catch{/* Audio is optional. */}
+function openAudioPanel(open:boolean){
+  $('audio-panel').hidden=!open
+  $('sound').setAttribute('aria-expanded',String(open))
 }
+showAudioSettings()
+window.addEventListener('pointerdown',unlockAudio,{once:true,capture:true})
+window.addEventListener('keydown',unlockAudio,{once:true,capture:true})
+window.addEventListener('pageshow',event=>{if(event.persisted)audio.unlock()})
+app.addEventListener('click',event=>{
+  if(event.target instanceof Element&&event.target.closest('button:not(:disabled)')){
+    unlockAudio()
+    audio.play('ui_click')
+  }
+},true)
+document.addEventListener('pointerdown',event=>{
+  if(event.target instanceof Element&&!event.target.closest('#audio-panel, #sound'))openAudioPanel(false)
+})
+for(const channel of volumeKeys){
+  const input=$<HTMLInputElement>('volume-'+channel)
+  input.addEventListener('input',()=>{
+    audio.updateVolume(channel,input.valueAsNumber/100)
+    $('value-'+channel).textContent=input.value+'%'
+  })
+}
+$('audio-mute').onclick=()=>{audio.toggleMute();showAudioSettings()}
+$('sound').onclick=()=>openAudioPanel($('audio-panel').hidden)
 function resetInput(){mouseDown=false;spaceDown=false;game.setBeam(false)}
 function menu(phase:'title'|'modes'|'levels'){
   showingHelp=false;helpPaused=false;error='';resetInput()
@@ -213,6 +248,7 @@ function text(id:string,value:string){
 }
 function render(state:GameState){
   const {phase}=state
+  audio.sync(phase,state.level,state.seconds,game.beamActive,state.progress>0,state.score>=levels[state.level].goal)
   const inRound=['countdown','playing','paused'].includes(phase)
   if(app.dataset.phase!==phase)app.dataset.phase=phase
   $('hero').hidden=phase!=='title'||showingHelp
@@ -298,7 +334,7 @@ try{
     }
   }
   game.onCapture=(points,p,kind,bonus)=>{
-    playSound(points<0)
+    audio.capture(kind==='cow'||kind==='gold'?kind:'hazard',game.state.combo)
     const reached=game.state.score>=game.level.goal&&!goalAnnounced
     if(reached)goalAnnounced=true
     eventHint=reached?'目标已达成 · 计时继续':points<0?`误吸${rule(kind).label} ${points}`:
@@ -316,12 +352,6 @@ try{
   $('camera-off').onclick=mouseMode
   $('switch').onclick=mouseMode
   $('pause').onclick=togglePause
-  $('sound').onclick=()=>{
-    muted=!muted
-    const label=muted?'开启音效':'静音'
-    $('sound').innerHTML=icon(muted?'mute':'sound');$('sound').setAttribute('aria-label',label);$('sound').title=label
-    if(!muted)unlockAudio()
-  }
   $('help').onclick=()=>{
     if(showingHelp){closeHelp();return}
     helpPaused=game.state.phase==='playing'||game.state.phase==='countdown'
@@ -347,6 +377,11 @@ try{
   window.addEventListener('pointercancel',()=>{mouseDown=false})
   window.addEventListener('keydown',e=>{
     if(e.code==='KeyP'&&!e.repeat)togglePause()
+    if(e.code==='Escape'&&!$('audio-panel').hidden){
+      openAudioPanel(false)
+      $('sound').focus()
+      return
+    }
     if(e.code==='Escape'&&showingHelp)closeHelp()
     if(e.code==='Space'&&mode==='mouse'&&game.state.phase==='playing'){
       e.preventDefault();spaceDown=true
@@ -356,7 +391,7 @@ try{
   const focusLost=()=>{resetInput();game.pause()}
   window.addEventListener('blur',focusLost)
   document.addEventListener('visibilitychange',()=>{if(document.hidden)focusLost()})
-  window.addEventListener('pagehide',()=>hand.close())
+  window.addEventListener('pagehide',()=>{hand.close();audio.suspend()})
   game.renderer.domElement.addEventListener('webglcontextlost',e=>{
     e.preventDefault();focusLost()
   })
