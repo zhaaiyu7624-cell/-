@@ -1,4 +1,4 @@
-"""Load the shared balance settings and keep desktop progress locally."""
+"""读取关卡参数，在用户目录保存独立的 Python 版通关纪录。"""
 import json
 import os
 from pathlib import Path
@@ -7,10 +7,11 @@ SETTINGS = json.loads(Path(__file__).with_name('levels.json').read_text(encoding
 LEVELS = SETTINGS['levels']
 TARGETS = SETTINGS['targets']
 PROGRESS_PATH = Path(os.environ.get('COW_HEIST_PROGRESS',
-                                    Path.home() / '.cow-heist-python-v2.json'))
+                                    Path.home() / '.cow-heist-python-v24.json'))
 
 
 def read_progress():
+    """首次运行或存档内容无效时，只开放第一关并提供零分纪录。"""
     try:
         data = json.loads(PROGRESS_PATH.read_text(encoding='utf-8'))
         if not isinstance(data['unlocked'], int) or len(data['best']) != len(LEVELS):
@@ -21,7 +22,7 @@ def read_progress():
 
 
 def write_progress(unlocked, best):
-    # Write to a temporary file before replacing the last successful result.
+    # 先在同一目录写临时文件，再替换正式存档，避免留下半份 JSON。
     try:
         temporary = PROGRESS_PATH.with_suffix('.tmp')
         temporary.write_text(json.dumps({'unlocked': unlocked, 'best': best}), encoding='utf-8')

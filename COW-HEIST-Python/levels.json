@@ -1,18 +1,126 @@
 {
   "seconds": 60,
-  "respawnSeconds": 2.7,
-  "baseCapture": 1.2,
+  "respawnSeconds": 4.2,
+  "baseCapture": 1.35,
   "targets": {
-    "cow": {"label":"黑白牛","points":100,"durationFactor":1},
-    "gold": {"label":"黄牛","points":200,"durationFactor":2},
-    "pumpkin": {"label":"危险南瓜","points":-80,"durationFactor":1},
-    "scarecrow": {"label":"稻草人","points":-100,"durationFactor":1},
-    "barrel": {"label":"废弃油桶","points":-120,"durationFactor":1}
+    "cow": {
+      "label": "黑白牛",
+      "points": 100,
+      "durationFactor": 1
+    },
+    "gold": {
+      "label": "黄牛",
+      "points": 200,
+      "durationFactor": 2
+    },
+    "pumpkin": {
+      "label": "危险南瓜",
+      "points": -80,
+      "durationFactor": 1
+    },
+    "scarecrow": {
+      "label": "稻草人",
+      "points": -100,
+      "durationFactor": 1
+    },
+    "barrel": {
+      "label": "废弃油桶",
+      "points": -120,
+      "durationFactor": 1
+    }
   },
   "levels": [
-    {"name":"牧场试飞","english":"Farm Flight","goal":300,"cow":4,"gold":1,"hazards":1,"interval":12,"speed":0.78,"kinds":["pumpkin"]},
-    {"name":"午夜追踪","english":"Midnight Pursuit","goal":450,"cow":5,"gold":1,"hazards":2,"interval":10,"speed":1.15,"kinds":["pumpkin","scarecrow"]},
-    {"name":"幽灵牧场","english":"Ghost Pasture","goal":650,"cow":6,"gold":2,"hazards":3,"interval":8,"speed":1.52,"kinds":["scarecrow","barrel","pumpkin"]},
-    {"name":"星际围捕","english":"Orbital Roundup","goal":850,"cow":7,"gold":2,"hazards":4,"interval":6,"speed":1.95,"kinds":["barrel","pumpkin","scarecrow"]}
-  ]
+    {
+      "name": "牧场试飞",
+      "english": "Farm Flight",
+      "goal": 1000,
+      "cow": 4,
+      "gold": 1,
+      "hazards": 2,
+      "interval": 12,
+      "kinds": [
+        "pumpkin"
+      ],
+      "movingHazards": 0
+    },
+    {
+      "name": "午夜追踪",
+      "english": "Midnight Pursuit",
+      "goal": 2000,
+      "cow": 5,
+      "gold": 1,
+      "hazards": 3,
+      "interval": 9,
+      "kinds": [
+        "pumpkin",
+        "scarecrow"
+      ],
+      "movingHazards": 1
+    },
+    {
+      "name": "幽灵牧场",
+      "english": "Ghost Pasture",
+      "goal": 3200,
+      "cow": 6,
+      "gold": 2,
+      "hazards": 4,
+      "interval": 7,
+      "kinds": [
+        "scarecrow",
+        "barrel",
+        "pumpkin"
+      ],
+      "movingHazards": 2
+    },
+    {
+      "name": "星际围捕",
+      "english": "Orbital Roundup",
+      "goal": 4500,
+      "cow": 7,
+      "gold": 2,
+      "hazards": 5,
+      "interval": 5,
+      "kinds": [
+        "barrel",
+        "pumpkin",
+        "scarecrow"
+      ],
+      "movingHazards": 3
+    }
+  ],
+  "beam": {
+    "acquireRadius": 1.18,
+    "holdRadius": 1.43,
+    "graceSeconds": 0.32,
+    "decayRate": 0.84,
+    "aimDeadZone": 0.055,
+    "aimFollowRate": 8,
+    "aimMaxExtraRate": 5,
+    "cowAcquireRadius": 1.68,
+    "cowHoldRadius": 1.95,
+    "cowPullStart": 0.7
+  },
+  "motion": {
+    "minSpeed": 0.29,
+    "maxSpeed": 0.55,
+    "turnRate": 1.1,
+    "turnJitter": 0.58,
+    "separation": 1.42,
+    "turnSeconds": 3.4,
+    "hazardMinSpeed": 0.16,
+    "hazardMaxSpeed": 0.24
+  },
+  "hazard": {
+    "warningSeconds": 1.1,
+    "safeDistance": 2.65,
+    "nearCowMin": 2.05,
+    "nearCowMax": 3.6,
+    "spacing": 2.5
+  },
+  "combo": {
+    "expireSeconds": 6.5,
+    "bonusUnit": 15,
+    "doubleAt": 3,
+    "tripleAt": 5
+  }
 }

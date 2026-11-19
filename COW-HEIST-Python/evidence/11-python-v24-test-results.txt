@@ -1,0 +1,5 @@
+pygame 2.6.1 (SDL 2.28.4, Python 3.12.14)
+Hello from the pygame community. https://www.pygame.org/contribute.html
+鼠标：黑白牛 1.35 秒、黄牛 2.70 秒，停步、3.10 秒悬停、重新吸取和只计一次分通过。
+关卡：障碍上限 2/3/4/5、按关混合、预警点占用时延迟激活通过。
+计分：三种扣分、分数下限、连击、暂停和 JSON 存档通过。

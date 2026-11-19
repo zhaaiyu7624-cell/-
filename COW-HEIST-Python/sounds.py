@@ -1,4 +1,4 @@
-"""Small synthesized sounds for successful and hazardous captures."""
+"""用 Python 合成桌面版的两类短反馈音。"""
 from array import array
 from math import pi, sin
 
@@ -10,6 +10,7 @@ RATE = 22050
 def make_sound(low, high):
     if pg.mixer.get_init() != (RATE, -16, 1):
         return None
+    # 约 0.2 秒扫频，振幅先缓升再衰减，避免突然起音。
     length = RATE // 5
     phase = 0
     samples = array('h')

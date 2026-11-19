@@ -1,4 +1,4 @@
-"""Run the Python desktop edition of COW HEIST."""
+"""启动 Python 作业版，连接输入、规则、声音和画面。"""
 import sys
 from time import monotonic
 
@@ -11,10 +11,11 @@ from sounds import RATE, make_sound
 
 
 def main():
+    """运行 Pygame 主循环，按事件、游戏规则、绘制的顺序处理一帧。"""
     pg.mixer.pre_init(RATE, -16, 1)
     pg.init()
     screen = pg.display.set_mode((WIDTH, HEIGHT))
-    pg.display.set_caption('COW HEIST / Python Edition')
+    pg.display.set_caption('COW HEIST 2.4 / Python Edition')
     clock = pg.time.Clock()
     game = Game()
     view = View(screen)
@@ -50,6 +51,7 @@ def main():
                     else:
                         use_camera = enable_camera()
                     continue
+                # 手势模式中，鼠标仍可点菜单，但不能在回合中覆盖手势。
                 mouse_input = event.type in (pg.MOUSEMOTION, pg.MOUSEBUTTONDOWN, pg.MOUSEBUTTONUP)
                 if not (use_camera and mouse_input and game.phase == 'playing'):
                     game.handle(event)
@@ -68,12 +70,14 @@ def main():
                 message = camera.status if position is None else ('BEAM ON' if pinched else 'HAND LOCKED')
                 if game.phase == 'playing':
                     if position is not None:
+                        # 手势输出是 0–1 的相对坐标，乘农场尺寸转为像素。
                         x, y = position
                         game.cursor.update(FIELD.left + FIELD.width * x, FIELD.top + FIELD.height * y)
                     game.pressed = pinched
                 else:
                     game.pressed = False
 
+            # 比较捕获序号，一次结算只触发一次提示音。
             serial = game.capture_serial
             game.update(seconds)
             if not muted and game.capture_serial != serial:
@@ -85,6 +89,7 @@ def main():
                 view.camera_status(message, camera.sample if use_camera else None, camera.preview_size)
             pg.display.flip()
     finally:
+        # 窗口退出时通知后台线程归还相机，再关闭 Pygame。
         camera.stop()
         if camera.thread:
             camera.thread.join(timeout=1)

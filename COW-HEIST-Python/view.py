@@ -1,4 +1,8 @@
-"""Procedural night-farm visuals and game screens."""
+"""Pygame 场景与界面绘制。
+
+本模块只读取游戏状态。灯光、场景、奶牛与提示环用图形原语生成，
+绘制顺序从远景到近景，再叠加 HUD 和菜单。
+"""
 import math
 from random import Random
 
@@ -98,11 +102,12 @@ class View:
             pg.draw.rect(surface, AMBER, (x, 203, 16, 16))
             pg.draw.line(surface, '#936469', (x + 8, 203), (x + 8, 219), 2)
 
-    def draw_cow(self, cow, ship):
+    def draw_cow(self, cow):
+        """按已保存的偏移画奶牛。暂停吸取时船移动也不会拖动奶牛。"""
         t = cow.lift
-        x, y = cow.position.lerp(ship, t)
+        x, y = cow.position + cow.visual_offset
         oval(self.screen, '#29383f', cow.position.x, cow.position.y + 13, 55 - t * 16, 14)
-        y -= t * 54
+        y -= t * t * (3 - 2 * t) * 56
         size = 1 - .56 * t
         animal = pg.Surface((65, 42), pg.SRCALPHA)
         fur, spots = ('#efba65', '#a15c3a') if cow.gold else ('#fff0da', '#343045')
@@ -177,16 +182,24 @@ class View:
         self.screen.blit(self.background, (0, 0))
         when = pg.time.get_ticks() / 1000
         for cow in sorted(game.cows, key=lambda animal: animal.position.y):
-            if cow.points < 0:
+            if cow.warning_until is not None:
+                # 警示环只是可见预告，此时场上没有可吸取的障碍模型。
+                oval(self.screen, '#ffc079' if int(when * 6) % 2 else '#a85f52',
+                     cow.position.x, cow.position.y, 42, 15)
+                oval(self.screen, '#354d50', cow.position.x, cow.position.y, 31, 8)
+            elif cow.hazard:
                 self.draw_hazard(cow, game.ship)
             else:
-                self.draw_cow(cow, game.ship)
+                if cow.lift and cow is not game.lock:
+                    pg.draw.ellipse(self.screen, '#6caa9d',
+                                    (cow.position.x - 24, cow.position.y - 8, 48, 16), 1)
+                self.draw_cow(cow)
         self.draw_ship(game.ship, game.pressed, when)
         if game.lock:
             x, y = game.lock.position
             rect = pg.Rect(x - 34, y - 23, 68, 46)
             pg.draw.ellipse(self.screen, '#69a79e', rect, 1)
-            pg.draw.arc(self.screen, MINT, rect, 0, math.tau * game.lock.lift, 4)
+            pg.draw.arc(self.screen, '#ff7562' if game.lock.hazard else MINT, rect, 0, math.tau * game.lock.lift, 4)
         for pos, points, age in game.popups:
             self.text(f'{points:+}', pos.x, pos.y - 65 - 24 * age, 34,
                       AMBER if points > 0 else '#ff7562', 'center', True)
@@ -204,6 +217,9 @@ class View:
         pg.draw.rect(self.screen, '#534864', (375, 61, 210, 6), border_radius=3)
         pg.draw.rect(self.screen, MINT, (375, 61, max(0, min(game.score / game.level['goal'], 1) * 210), 6), border_radius=3)
         self.text(f"GOAL {game.level['goal']}", 480, 72, 17, MUTED, 'midtop')
+        if game.combo:
+            label = f'COMBO x{game.multiplier} / {game.combo}' if game.multiplier > 1 else f'STREAK {game.combo}'
+            self.text(label, 198, 58, 22, MINT)
         self.text('TIME LEFT', 906, 36, 19, MUTED, 'topright')
         self.text(f'{math.ceil(game.remaining):02d}s', 906, 55, 33,
                   AMBER if game.remaining <= 10 else MINT, 'topright', True)

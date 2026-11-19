@@ -1,4 +1,4 @@
-"""Local webcam input. Timing and gesture mapping remain ordinary Python."""
+"""把本地摄像头关键点转成飞船位置和牵引开关。"""
 from dataclasses import dataclass
 from math import hypot
 from pathlib import Path
@@ -8,6 +8,7 @@ from time import monotonic
 
 @dataclass(frozen=True)
 class Sample:
+    """后台线程发布的单帧快照。主线程只读，不会修改帧内容。"""
     time: float = 0.0
     image: bytes = b''
     points: tuple = ()
@@ -23,6 +24,8 @@ class Gestures:
         self.since = self.previous = None
 
     def update(self, sample, now):
+        """用掌心估算位置，用拇指与食指的相对距离判定光束开关。"""
+        # 超时帧和未检出手必须释放光束，不能重复使用上一帧的捏合。
         if now - sample.time > .28 or len(sample.points) != 21:
             self.reset()
             return None, False
@@ -31,11 +34,12 @@ class Gestures:
         points = sample.points
         palm = (0, 5, 9, 13, 17)
         x, y = (sum(points[i][axis] for i in palm) / len(palm) for axis in (0, 1))
-        # Model input and preview are mirrored together, so right is right.
+        # 识别和预览同时镜像。掌心右移对应飞船右移。
         target = tuple(max(0, min(1, (value - .18) / .64)) for value in (x, y))
         if self.position is None:
             self.position = target
         else:
+            # 每帧只校正三分之一，过滤摄像头的细微坐标抖动。
             self.position = tuple(a + .33 * (b - a) for a, b in zip(self.position, target))
 
         def distance(a, b):
@@ -45,7 +49,7 @@ class Gestures:
         if scale < .045:
             self.reset()
             return None, False
-        # Normalize by palm size and use distinct thresholds to prevent flicker.
+        # 用掌宽归一化两指距离。闭合和释放使用不同阈值，再要求持续 0.12 秒。
         candidate = distance(4, 8) / scale < (.39 if self.pressed else .27)
         if candidate != self.candidate or self.since is None:
             self.candidate, self.since = candidate, sample.time
@@ -80,7 +84,7 @@ class Webcam:
         self.stop_signal.set()
 
     def read(self):
-        # Keep camera and inference off the Pygame rendering thread.
+        # 摄像头读取与模型推理放在后台，避免阻塞绘制与键盘响应。
         capture = None
         try:
             import cv2
