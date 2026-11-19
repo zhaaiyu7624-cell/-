@@ -1,3 +1,4 @@
+import {assetURL,isStandalone} from './portable-assets'
 import type { HandLandmarker, NormalizedLandmark } from '@mediapipe/tasks-vision'
 
 const palm=[0,5,9,13,17]
@@ -47,10 +48,18 @@ export class HandController {
       this.hasVideo=true;this.onChange()
       const {FilesetResolver,HandLandmarker}=await import('@mediapipe/tasks-vision')
       const root=import.meta.env.BASE_URL+'vision/'
-      const files=await FilesetResolver.forVisionTasks(root+'wasm')
+      const wasmSuffix=isStandalone&&!(await FilesetResolver.isSimdSupported())?'_nosimd':''
+      const [files,modelAssetPath]=await Promise.all([
+        isStandalone?Promise.all([
+          assetURL('vision/wasm/vision_wasm'+wasmSuffix+'_internal.js'),
+          assetURL('vision/wasm/vision_wasm'+wasmSuffix+'_internal.wasm')
+        ]).then(([wasmLoaderPath,wasmBinaryPath])=>({wasmLoaderPath,wasmBinaryPath})):
+          FilesetResolver.forVisionTasks(root+'wasm'),
+        assetURL('vision/hand_landmarker.task')
+      ])
       if(token!==this.generation)return
       const make=(delegate:'GPU'|'CPU')=>HandLandmarker.createFromOptions(files,{
-        baseOptions:{modelAssetPath:root+'hand_landmarker.task',delegate},runningMode:'VIDEO',
+        baseOptions:{modelAssetPath,delegate},runningMode:'VIDEO',
         numHands:1,minHandDetectionConfidence:.60,minHandPresenceConfidence:.60,minTrackingConfidence:.56
       })
       let model

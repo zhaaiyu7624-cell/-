@@ -1,4 +1,5 @@
 import type {Phase} from './game'
+import {assetURL} from './portable-assets'
 
 const sfx=[
   'ufo_start','ufo_beam_loop','cow_suction_loop','cow_capture','golden_cow_capture',
@@ -98,7 +99,7 @@ export class AudioManager {
   private async decode(folder:'bgm'|'sfx',name:string){
     if(!this.context)return
     try{
-      const response=await fetch(`${import.meta.env.BASE_URL}audio/${folder}/${name}.wav`)
+      const response=await fetch(await assetURL(`audio/${folder}/${name}.wav`))
       if(!response.ok)throw new Error(`HTTP ${response.status}`)
       return await this.context.decodeAudioData(await response.arrayBuffer())
     }catch(error){console.warn('Audio asset unavailable',name,error)}
