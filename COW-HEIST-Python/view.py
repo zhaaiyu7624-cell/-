@@ -223,7 +223,7 @@ class View:
         self.text('TIME LEFT', 906, 36, 19, MUTED, 'topright')
         self.text(f'{math.ceil(game.remaining):02d}s', 906, 55, 33,
                   AMBER if game.remaining <= 10 else MINT, 'topright', True)
-        self.text('MOUSE  /  MOVE      LEFT CLICK  /  ABDUCT      C  /  CAMERA      P  /  PAUSE',
+        self.text('MOUSE  /  MOVE      LEFT CLICK  /  ABDUCT      C  /  CAMERA      P  /  PAUSE      S  /  SOUND',
                   480, 590, 20, CREAM, 'midtop')
         self.text(f'DAIRY {CAPTURE_SECONDS:g}s +100  •  GOLD {2*CAPTURE_SECONDS:g}s +200  •  AVOID !',
                   480, 613, 18, MUTED, 'midtop')

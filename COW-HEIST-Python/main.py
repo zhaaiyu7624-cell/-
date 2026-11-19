@@ -7,12 +7,12 @@ import pygame as pg
 from camera import Gestures, Webcam
 from game import FIELD, Game
 from view import HEIGHT, WIDTH, View
-from sounds import RATE, make_sound
+from sounds import CHANNELS, RATE, BackgroundMusic, make_sound
 
 
 def main():
     """运行 Pygame 主循环，按事件、游戏规则、绘制的顺序处理一帧。"""
-    pg.mixer.pre_init(RATE, -16, 1)
+    pg.mixer.pre_init(RATE, -16, CHANNELS)
     pg.init()
     screen = pg.display.set_mode((WIDTH, HEIGHT))
     pg.display.set_caption('COW HEIST 2.4 / Python Edition')
@@ -24,6 +24,7 @@ def main():
     message = 'MOUSE MODE'
     success_sound, hazard_sound = make_sound(480, 1020), make_sound(235, 102)
     muted = False
+    music = BackgroundMusic()
 
     def enable_camera():
         gestures.reset()
@@ -41,6 +42,7 @@ def main():
                     return
                 if event.type == pg.KEYDOWN and event.key == pg.K_s:
                     muted = not muted
+                    music.set_muted(muted)
                     continue
                 if event.type == pg.KEYDOWN and event.key == pg.K_c:
                     if use_camera:
@@ -84,6 +86,7 @@ def main():
                 sound = success_sound if game.last_points > 0 else hazard_sound
                 if sound:
                     sound.play()
+            music.sync(game.phase, game.level_index)
             view.draw(game)
             if use_camera or message != 'MOUSE MODE':
                 view.camera_status(message, camera.sample if use_camera else None, camera.preview_size)

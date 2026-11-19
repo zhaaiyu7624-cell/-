@@ -44,7 +44,7 @@ py -3.12 -m venv .venv
 | `requirements-camera.txt` | 摄像头模式的依赖 |
 | `assets/hand_landmarker.task` | 本地 Hand Landmarker 模型 |
 | `levels.json` / `levels.py` | 四关配置、吸取时间、分数及本地记录 |
-| `sounds.py` | Python 合成成功和障碍物提示音 |
+| `sounds.py` | 背景音乐播放与 Python 合成反馈音 |
 | `requirements.txt` | 锁定 Pygame 版本 |
 | `start-windows.cmd` | Windows 启动脚本 |
 | `产品说明.docx` | 应用场景、用户、设计逻辑和普及分析 |
@@ -56,3 +56,7 @@ py -3.12 -m venv .venv
 ## 手势资源
 
 模型为 Google MediaPipe Hand Landmarker，沿用原 3D 原型验证过的本地模型文件。模型的 SHA-256 为 `fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1`。
+
+## 背景音乐
+
+菜单和四关分别使用对应的原创 Python 配乐。作业包内的五首立体声 Ogg 从原项目自行合成的 WAV 转码，以减小提交包。按 S 同时静音或恢复配乐与音效。暂停游戏时音乐停住，继续后从原位置播放。
